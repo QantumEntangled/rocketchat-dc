@@ -1,0 +1,30 @@
+version: '3.5'
+services:
+
+    app:
+        image: 'rocketchat/rocket.chat:latest'
+        restart: unless-stopped
+        depends_on: 
+            - db
+        networks:
+            - net
+        ports:
+            - "3000:3000"
+        volumes:
+            - ./data/uploads:/app/uploads
+        env_file:
+            - rocketchat-variables.env
+
+    db:
+        image: mongo:latest
+        restart: unless-stopped
+        networks:
+            net:
+                aliases:
+                    - mongo
+        volumes:
+            - ./data/db:/data/db
+        command: mongod --smallfiles # --oplogSize 128 --storageEngine=mmapv1
+
+networks:
+    net:
