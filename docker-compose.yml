@@ -1,20 +1,25 @@
-version: '3.5'
+version: '3.7'
 services:
 
+    # Rocket.Chat Web interface
     app:
         image: 'rocketchat/rocket.chat:latest'
         restart: unless-stopped
-        depends_on: 
+        depends_on:
             - db
+            - db-init
         networks:
             - net
         ports:
+            # Edit the first number here to change the external port on the host machine
             - "3000:3000"
         volumes:
             - ./data/uploads:/app/uploads
+            - ./scripts/:/app/scripts
         env_file:
             - rocketchat-variables.env
 
+    # Mongo Database
     db:
         image: mongo:latest
         restart: unless-stopped
@@ -24,7 +29,21 @@ services:
                     - mongo
         volumes:
             - ./data/db:/data/db
-        command: mongod --smallfiles # --oplogSize 128 --storageEngine=mmapv1
+        command: mongod --smallfiles --oplogSize 128 --replSet repl1 --storageEngine=mmapv1
+        env_file:
+            - rocketchat-variables.env
+
+    # This only runs once, to initiate the replication set.
+    db-init:
+        image: mongo:latest
+        restart: 'no'
+        depends_on:
+            - db
+        networks:
+            - net
+        command: 'mongo mongo/rocketchat --eval "rs.initiate({ _id: ''repl1'', members: [ { _id: 0, host: ''localhost:27017'' } ]})"'
+        env_file:
+            - rocketchat-variables.env
 
 networks:
     net:
